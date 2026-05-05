@@ -26,3 +26,16 @@ export type ShippingRequest = {
   products: ShippingProduct[];
   options: QuoteRequest;
 };
+
+export type ShippingQuote = {
+  id: number;
+  name: string; // "PAC", "SEDEX", etc.
+  price: string; // ⚠️ vem como string: "15.30"
+  delivery_time: number; // dias úteis
+  error?: string; // presente se o serviço não está disponível
+  company: {
+    id: number;
+    name: string; // "Correios", "Jadlog", etc.
+    picture: string;
+  };
+};
