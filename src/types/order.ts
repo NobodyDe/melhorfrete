@@ -3,11 +3,6 @@ type OrderItems = {
   value: number;
 };
 
-type OrderSubTotal = {
-  label: string;
-  value: number;
-};
-
 type OrderAddress = {
   street: string;
   city: string;

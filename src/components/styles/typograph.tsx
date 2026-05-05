@@ -6,6 +6,7 @@ export const typograph = tv({
     size: {
       title: "text-2xl font-medium",
       detail: "text-sm font-thin",
+      result: "text-xl",
     },
     color: {
       detail: "text-detail",
