@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { ShippingRequest } from "../types/shipping";
+import type { ShippingQuote, ShippingRequest } from "../types/shipping";
 
 const api = axios.create({
   baseURL: "/melhorenvio/api/v2/me",
@@ -10,7 +10,12 @@ const api = axios.create({
   },
 });
 
-export async function calculateShipping(payload: ShippingRequest) {
-  const { data } = await api.post("/shipment/calculate", payload);
+export async function calculateShipping(
+  payload: ShippingRequest,
+): Promise<ShippingQuote[]> {
+  const { data } = await api.post<ShippingQuote[]>(
+    "/shipment/calculate",
+    payload,
+  );
   return data;
 }

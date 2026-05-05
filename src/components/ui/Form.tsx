@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { input } from "../styles/input";
 import { typograph } from "../styles/typograph";
 import { INITIAL_ORDER } from "../../constants/order";
@@ -8,15 +8,35 @@ import type { OrderState } from "../../types/order";
 
 export default function Form() {
   const [order, setOrder] = useState<OrderState>(INITIAL_ORDER);
-  const { mutate, isPending } = useShippingCalculate();
+  const { mutate, isPending, data } = useShippingCalculate();
+
+  const shippingOptions = useMemo(() => {
+    if (!data) return [];
+    return data
+      .filter((quote) => !quote.error)
+      .sort((a, b) => Number(a.price) - Number(b.price));
+  }, [data]);
+
+  console.log(shippingOptions);
+
+  const subtotal = useMemo(() => {
+    return order.items.reduce((acc, item) => acc + item.value, 0);
+  }, [order.items]);
+
+  const selectedShipping = useMemo(() => {
+    if (!order.selectedShippingId) return null;
+    return (
+      shippingOptions.find((q) => q.id === order.selectedShippingId) ?? null
+    );
+  }, [order.selectedShippingId, shippingOptions]);
+
+  const total = useMemo(() => {
+    if (!selectedShipping) return subtotal;
+    return subtotal + Number(selectedShipping.price);
+  }, [subtotal, selectedShipping]);
 
   async function updateOrder(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
-    // const formData = new FormData(e.currentTarget);
-    // const street = formData.get("street") as string;
-    // const city = formData.get("city") as string;
-    // const state = formData.get("state") as string;
-    // const postalCode = formData.get("postal") as string;
 
     const {
       street,
@@ -55,6 +75,7 @@ export default function Form() {
         const cheapest = result
           .filter((q) => !q.error)
           .sort((a, b) => Number(a.price) - Number(b.price))[0];
+        console.log(result);
         if (cheapest) {
           setOrder((prev) => ({
             ...prev,
@@ -63,6 +84,7 @@ export default function Form() {
         }
       },
     });
+
     setOrder((prevOrder) => ({
       ...prevOrder,
       items: [{ label: "Camiseta", value: 20 }],
@@ -153,10 +175,7 @@ export default function Form() {
               : " -"}
           </span>
           <span className={typograph({})}>
-            Subtotal:
-            {order.items.length > 0
-              ? ` R$ ${order.items.reduce((acc, item) => acc + item.value, 0)}`
-              : " R$ 0"}
+            Subtotal: R$ {subtotal.toFixed(2)}
           </span>
           <span className={typograph({})}>
             Shipping Address:
@@ -164,9 +183,42 @@ export default function Form() {
               ? ` ${order.address.street}, ${order.address.city}, ${order.address.state}, ${order.address.postal} `
               : " -"}
           </span>
-          <span className={typograph({})}>
-            Tax: {isPending && <span> Calculando</span>}
-          </span>
+          <div>
+            <span className={typograph({})}>Tax:</span>
+            {isPending && (
+              <span className={typograph({})}> Calculando...</span>
+            )}{" "}
+            {!isPending && shippingOptions.length === 0 && (
+              <span className={typograph({})}> -</span>
+            )}
+          </div>
+          {shippingOptions.length > 0 && (
+            <div className="flex flex-col gap-1 mt-1 ml-4">
+              {shippingOptions.map((option) => (
+                <label
+                  key={option.id}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  <input
+                    type="radio"
+                    name="shipping"
+                    checked={order.selectedShippingId === option.id}
+                    onChange={() =>
+                      setOrder((prev) => ({
+                        ...prev,
+                        selectedShippingId: option.id,
+                      }))
+                    }
+                  />
+                  <span className={typograph({})}>
+                    {option.company.name} — {option.name} — R$ {option.price} (
+                    {option.delivery_time} dias)
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
+          <span className={typograph({})}>Total: R$ {total.toFixed(2)}</span>
         </div>
       </div>
     </div>
