@@ -5,6 +5,7 @@ import { INITIAL_ORDER } from "../../constants/order";
 import type { ShippingRequest } from "../../types/shipping";
 import { useShippingCalculate } from "../../hooks/useShippingCalculate";
 import type { OrderState } from "../../types/order";
+import { STREET_REGEX } from "../../constants/regex";
 
 export default function Form() {
   const [order, setOrder] = useState<OrderState>(INITIAL_ORDER);
@@ -16,8 +17,6 @@ export default function Form() {
       .filter((quote) => !quote.error)
       .sort((a, b) => Number(a.price) - Number(b.price));
   }, [data]);
-
-  console.log(shippingOptions);
 
   const subtotal = useMemo(() => {
     return order.items.reduce((acc, item) => acc + item.value, 0);
@@ -35,6 +34,11 @@ export default function Form() {
     return subtotal + Number(selectedShipping.price);
   }, [subtotal, selectedShipping]);
 
+  function sanitazeInput(e: React.InputEvent<HTMLInputElement>, regex: RegExp) {
+    const input = e.currentTarget;
+    input.value = input.value.replace(regex, "");
+  }
+
   async function updateOrder(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
 
@@ -43,13 +47,23 @@ export default function Form() {
       city,
       state,
       postal: postalCode,
-    } = Object.fromEntries(new FormData(e.currentTarget)) as any;
+    } = Object.fromEntries(new FormData(e.currentTarget)) as Record<
+      string,
+      string
+    >;
 
-    if (!postalCode) return;
+    if (!street || !city || !state || !postalCode) return;
+
+    if (postalCode.length < 8 || postalCode.length > 10) return;
+
+    const cleanPostalCode = postalCode.replace(/[.-]/g, "");
+
+    if (cleanPostalCode.length !== 8 || !/^\d{8}$/.test(cleanPostalCode))
+      return;
 
     const payload: ShippingRequest = {
       from: { postal_code: "01310100" },
-      to: { postal_code: postalCode },
+      to: { postal_code: cleanPostalCode },
       products: [
         {
           id: 1,
@@ -75,7 +89,6 @@ export default function Form() {
         const cheapest = result
           .filter((q) => !q.error)
           .sort((a, b) => Number(a.price) - Number(b.price))[0];
-        console.log(result);
         if (cheapest) {
           setOrder((prev) => ({
             ...prev,
@@ -95,7 +108,6 @@ export default function Form() {
         postal: postalCode,
       },
     }));
-    console.log(order);
   }
 
   return (
@@ -109,8 +121,6 @@ export default function Form() {
           <option value="Brazil" selected>
             Brazil
           </option>
-          <option value="United State">United State</option>
-          <option value="United Kingdom">United Kingdom</option>
         </select>
       </div>
       <form
@@ -123,6 +133,7 @@ export default function Form() {
         <input
           name="street"
           type="text"
+          onInput={(e) => sanitazeInput(e, STREET_REGEX)}
           placeholder="Street"
           className={input()}
         />
@@ -171,7 +182,7 @@ export default function Form() {
           <span className={typograph({})}>
             Items:
             {order.items.length > 0
-              ? order.items.map((i) => `${i.label} - R$ ${i.value}`)
+              ? order.items.map((i) => ` ${i.label} - R$ ${i.value}`)
               : " -"}
           </span>
           <span className={typograph({})}>
@@ -218,7 +229,11 @@ export default function Form() {
               ))}
             </div>
           )}
-          <span className={typograph({})}>Total: R$ {total.toFixed(2)}</span>
+          <div className="py-4 border-t border-border mt-4">
+            <span className={typograph({ size: "result" })}>
+              Total: R$ {total.toFixed(2)}
+            </span>
+          </div>
         </div>
       </div>
     </div>
